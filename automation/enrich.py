@@ -30,7 +30,7 @@ def generate_image_url(place_name):
     encoded_prompt = requests.utils.quote(prompt)
     return f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=600&nologo=true"
 
-def update_place_english(document_id, english_name, english_desc):
+def update_place_english(document_id, english_name, english_desc, image_url):
     data = {
         "data": {
             "name": english_name,
@@ -45,6 +45,7 @@ def update_place_english(document_id, english_name, english_desc):
     )
     if response.status_code in [200, 201]:
         print(f"✅ İngilizce kaydedildi!")
+        print(f"🖼️ Görsel URL: {image_url[:80]}...")
     else:
         print(f"❌ Hata: {response.status_code} - {response.text[:100]}")
 
@@ -67,7 +68,7 @@ def enrich_places():
         image_url = generate_image_url(name)
         print(f"Görsel URL üretildi ✅")
         
-        update_place_english(document_id, english_name, english_desc)
+        update_place_english(document_id, english_name, english_desc, image_url)
         print()
 
 if __name__ == "__main__":
