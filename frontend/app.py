@@ -39,14 +39,12 @@ def load_image_from_url(url):
         return None
 
 def get_image(name):
-    # Önce local dosyayı dene
     local_path = PLACE_IMAGES.get(name)
     if local_path and os.path.exists(local_path):
         try:
             return Image.open(local_path)
         except:
             pass
-    # Yedek: URL'den yükle
     url = PLACE_IMAGES_FALLBACK.get(name, f"https://picsum.photos/id/{abs(hash(name)) % 200 + 1}/800/500")
     return load_image_from_url(url)
 
@@ -57,11 +55,18 @@ def get_cities():
     return []
 
 def get_places(city_name, locale="tr"):
-    response = requests.get(f"{STRAPI_URL}/api/places?populate=*&locale={locale}")
-    if response.status_code == 200:
-        places = response.json()["data"]
-        return [p for p in places if p.get("city") and p["city"].get("name") == city_name]
-    return []
+    # TR mekanları çek ve documentId'leri al
+    tr_response = requests.get(f"{STRAPI_URL}/api/places?populate=*&locale=tr")
+    tr_places = tr_response.json()["data"] if tr_response.status_code == 200 else []
+    tr_doc_ids = [p["documentId"] for p in tr_places if p.get("city") and p["city"].get("name") == city_name]
+
+    if locale == "tr":
+        return [p for p in tr_places if p["documentId"] in tr_doc_ids]
+
+    # EN mekanları çek
+    en_response = requests.get(f"{STRAPI_URL}/api/places?populate=*&locale=en")
+    en_places = en_response.json()["data"] if en_response.status_code == 200 else []
+    return [p for p in en_places if p["documentId"] in tr_doc_ids]
 
 st.title("🌍 YZ Destekli Gezi Rehberi")
 st.markdown("Dünya'nın en güzel şehirlerini keşfet!")
@@ -79,15 +84,15 @@ else:
     city_names = [c["name"] for c in cities]
     with col1:
         selected_city = st.selectbox("🏙️ Şehir Seç", city_names)
-    
+
     selected_city_data = next((c for c in cities if c["name"] == selected_city), None)
     if selected_city_data:
         st.markdown(f"### 📍 {selected_city_data['name']} - {selected_city_data['country']}")
         st.info(selected_city_data["description"])
-    
+
     st.divider()
     places = get_places(selected_city, locale)
-    
+
     if not places:
         st.warning("Bu şehir için mekan bulunamadı.")
     else:
