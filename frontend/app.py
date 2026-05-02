@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 from PIL import Image
+from io import BytesIO
 
 st.set_page_config(
     page_title="YZ Destekli Gezi Rehberi",
@@ -11,18 +12,19 @@ st.set_page_config(
 STRAPI_URL = "https://gezi-rehberi-backend-f4qi.onrender.com"
 
 PLACE_IMAGES = {
-    "Eyfel Kulesi": "eyfel kulesi.jpg",
-    "Louvre Müzesi": "Louvre Müzesi.jpg",
-    "Senso-ji Tapınağı": "Senso-ji Tapınağı.jpg",
-    "Ayasofya": "Ayasofya.jpg",
-    "Central Park": "centralpark.jpg",
-    "Kolezyum": "kolezyum.jpg",
+    "Eyfel Kulesi": "https://picsum.photos/id/318/800/500",
+    "Louvre Müzesi": "https://picsum.photos/id/188/800/500",
+    "Senso-ji Tapınağı": "https://picsum.photos/id/164/800/500",
+    "Ayasofya": "https://picsum.photos/id/162/800/500",
+    "Central Park": "https://picsum.photos/id/15/800/500",
+    "Kolezyum": "https://picsum.photos/id/395/800/500",
 }
 
 @st.cache_data
-def load_image(filename):
+def load_image(url):
     try:
-        return Image.open(filename)
+        r = requests.get(url, timeout=15)
+        return Image.open(BytesIO(r.content))
     except:
         return None
 
@@ -74,8 +76,8 @@ else:
                 name = place["name"]
                 description = place["description"]
                 rating = place.get("rating", 0)
-                filename = PLACE_IMAGES.get(name)
-                img = load_image(filename) if filename else None
+                url = PLACE_IMAGES.get(name, f"https://picsum.photos/id/{abs(hash(name)) % 200 + 1}/800/500")
+                img = load_image(url)
                 if img:
                     st.image(img, use_container_width=True)
                 st.markdown(f"**{name}**")
