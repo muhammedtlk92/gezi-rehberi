@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 from PIL import Image
 from io import BytesIO
+import os
 
 st.set_page_config(
     page_title="YZ Destekli Gezi Rehberi",
@@ -12,6 +13,15 @@ st.set_page_config(
 STRAPI_URL = "https://gezi-rehberi-backend-f4qi.onrender.com"
 
 PLACE_IMAGES = {
+    "Eyfel Kulesi": "eyfel kulesi.jpg",
+    "Louvre Müzesi": "Louvre Müzesi.jpg",
+    "Senso-ji Tapınağı": "Senso-ji Tapınağı.jpg",
+    "Ayasofya": "Ayasofya.jpg",
+    "Central Park": "centralpark.jpg",
+    "Kolezyum": "kolezyum.jpg",
+}
+
+PLACE_IMAGES_FALLBACK = {
     "Eyfel Kulesi": "https://picsum.photos/id/318/800/500",
     "Louvre Müzesi": "https://picsum.photos/id/188/800/500",
     "Senso-ji Tapınağı": "https://picsum.photos/id/164/800/500",
@@ -21,12 +31,24 @@ PLACE_IMAGES = {
 }
 
 @st.cache_data
-def load_image(url):
+def load_image_from_url(url):
     try:
         r = requests.get(url, timeout=15)
         return Image.open(BytesIO(r.content))
     except:
         return None
+
+def get_image(name):
+    # Önce local dosyayı dene
+    local_path = PLACE_IMAGES.get(name)
+    if local_path and os.path.exists(local_path):
+        try:
+            return Image.open(local_path)
+        except:
+            pass
+    # Yedek: URL'den yükle
+    url = PLACE_IMAGES_FALLBACK.get(name, f"https://picsum.photos/id/{abs(hash(name)) % 200 + 1}/800/500")
+    return load_image_from_url(url)
 
 def get_cities():
     response = requests.get(f"{STRAPI_URL}/api/cities?locale=tr")
@@ -76,8 +98,7 @@ else:
                 name = place["name"]
                 description = place["description"]
                 rating = place.get("rating", 0)
-                url = PLACE_IMAGES.get(name, f"https://picsum.photos/id/{abs(hash(name)) % 200 + 1}/800/500")
-                img = load_image(url)
+                img = get_image(name)
                 if img:
                     st.image(img, use_container_width=True)
                 st.markdown(f"**{name}**")
