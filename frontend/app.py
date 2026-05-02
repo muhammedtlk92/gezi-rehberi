@@ -71,6 +71,7 @@ def get_image(name):
     url = PLACE_IMAGES_FALLBACK.get(name, f"https://picsum.photos/id/{abs(hash(name)) % 200 + 1}/800/500")
     return load_image_from_url(url)
 
+@st.cache_data
 def get_cities(locale="tr"):
     response = requests.get(f"{STRAPI_URL}/api/cities?locale={locale}")
     if response.status_code == 200:
@@ -92,6 +93,10 @@ def get_places(city_name, locale="tr"):
 st.title("🌍 YZ Destekli Gezi Rehberi")
 st.markdown("Dünya'nın en güzel şehirlerini keşfet!")
 
+# Session state başlat
+if "city_index" not in st.session_state:
+    st.session_state.city_index = 0
+
 col1, col2 = st.columns([3, 1])
 with col2:
     lang = st.selectbox("🌐 Dil / Language", ["Türkçe", "English"])
@@ -99,35 +104,35 @@ with col2:
 
 t = TRANSLATIONS[locale]
 
-# Şehirleri seçilen dilde çek
-cities = get_cities(locale)
-# Eğer boşsa TR'den çek (fallback)
-if not cities:
-    cities = get_cities("tr")
+# TR şehirleri her zaman ana referans
+tr_cities = get_cities("tr")
+locale_cities = get_cities(locale)
+if not locale_cities:
+    locale_cities = tr_cities
 
-if not cities:
+if not tr_cities:
     st.error(t["no_cities"])
 else:
-    city_names = [c["name"] for c in cities]
-    with col1:
-        selected_city = st.selectbox("🏙️ Şehir Seç", city_names)
+    tr_city_names = [c["name"] for c in tr_cities]
+    locale_city_names = [c["name"] for c in locale_cities]
 
-    selected_city_data = next((c for c in cities if c["name"] == selected_city), None)
+    with col1:
+        selected_city = st.selectbox(
+            "🏙️ Şehir Seç",
+            locale_city_names,
+            index=st.session_state.city_index
+        )
+        st.session_state.city_index = locale_city_names.index(selected_city)
+
+    # TR karşılığını bul
+    tr_city_name = tr_city_names[st.session_state.city_index]
+
+    selected_city_data = locale_cities[st.session_state.city_index]
     if selected_city_data:
         st.markdown(f"### 📍 {selected_city_data['name']} - {selected_city_data['country']}")
         st.info(selected_city_data["description"])
 
     st.divider()
-
-    # TR ismiyle şehri bul (places filtresi için)
-    tr_cities = get_cities("tr")
-    tr_city_names = [c["name"] for c in tr_cities]
-    # Seçilen şehrin TR karşılığını bul (index ile)
-    try:
-        city_index = city_names.index(selected_city)
-        tr_city_name = tr_city_names[city_index]
-    except:
-        tr_city_name = selected_city
 
     places = get_places(tr_city_name, locale)
 
